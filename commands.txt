@@ -1,0 +1,13 @@
+oc create secret generic mssql-creds \
+  --from-literal=username="YOUR_SQL_USERNAME" \
+  --from-literal=password="YOUR_SQL_PASSWORD"
+
+oc create secret generic aws-creds \
+  --from-literal=access-key="YOUR_CSV_ACCESS_KEY" \
+  --from-literal=secret-key="YOUR_CSV_SECRET_KEY" \
+  --from-literal=bucket-name="YOUR_CSV_BUCKET_NAME"
+
+
+oc start-build spark-app --from-dir=. --follow
+
+oc apply -f spark-job.yaml
