@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sql-to-s3-pipeline
+spec:
+  template:
+    spec:
+      containers:
+      - name: spark-processor
+        image: image-registry.openshift-image-registry.svc:5000/YOUR_NAMESPACE/spark-app:latest
+        imagePullPolicy: Always
+        command: ["/bin/bash", "-c"]
+        args: 
+          - |
+            spark-submit \
+            --master "local[*]" \
+            --jars /opt/spark/jars/hadoop-aws-3.3.4.jar,/opt/spark/jars/aws-java-sdk-bundle-1.12.262.jar,/opt/spark/jars/mssql-jdbc.jar \
+            --conf "spark.hadoop.fs.s3a.access.key=${AWS_ACCESS_KEY}" \
+            --conf "spark.hadoop.fs.s3a.secret.key=${AWS_SECRET_KEY}" \
+            --conf "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem" \
+            --conf "spark.hadoop.fs.s3a.endpoint=s3.amazonaws.com" \
+            /opt/app-root/src/main.py
+        env:
+          - name: DB_USER
+            valueFrom: { secretKeyRef: { name: mssql-creds, key: username } }
+          - name: DB_PASS
+            valueFrom: { secretKeyRef: { name: mssql-creds, key: password } }
+          - name: DB_SERVER
+            value: "ABCD\\EFGH303"
+          - name: DB_NAME
+            value: "AI DB"
+          - name: AWS_ACCESS_KEY
+            valueFrom: { secretKeyRef: { name: aws-creds, key: access-key } }
+          - name: AWS_SECRET_KEY
+            valueFrom: { secretKeyRef: { name: aws-creds, key: secret-key } }
+          - name: S3_BUCKET
+            valueFrom: { secretKeyRef: { name: aws-creds, key: bucket-name } }
+      restartPolicy: Never

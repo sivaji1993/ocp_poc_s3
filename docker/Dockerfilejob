@@ -1,0 +1,30 @@
+FROM registry.access.redhat.com/ubi9/python-311:latest
+
+USER root
+
+RUN yum install -y java-11-openjdk-devel && yum clean all
+
+ENV SPARK_VERSION=3.5.0
+ENV HADOOP_VERSION=3
+ENV SPARK_HOME=/opt/spark
+ENV PATH=$PATH:$SPARK_HOME/bin
+ENV PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.9.7-src.zip:/opt/app-root/src
+
+RUN curl -L -s https://archive.apache.org/dist/spark/spark-$\{SPARK_VERSION\}/spark-$\{SPARK_VERSION\}-bin-hadoop$\{HADOOP_VERSION\}.tgz | tar -xz -C /opt/ \
+    && mv /opt/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} $SPARK_HOME
+
+# Download AWS and MSSQL JARs
+RUN curl -L -s -o $SPARK_HOME/jars/hadoop-aws-3.3.4.jar https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar \
+    && curl -L -s -o $SPARK_HOME/jars/aws-java-sdk-bundle-1.12.262.jar https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar \
+    && curl -L -s -o $SPARK_HOME/jars/mssql-jdbc.jar https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/12.2.0.jre11/mssql-jdbc-12.2.0.jre11.jar
+
+WORKDIR /opt/app-root/src
+COPY . .
+
+RUN pip install --no-cache-dir pyspark==3.5.0
+
+RUN chown -R 1001:0 /opt/spark /opt/app-root \
+    && chmod -R g+rw /opt/spark /opt/app-root
+
+USER 1001
+CMD ["spark-submit", "/opt/app-root/src/main.py"]
